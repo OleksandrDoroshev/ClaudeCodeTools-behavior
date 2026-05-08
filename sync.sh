@@ -1,43 +1,52 @@
-#!/bin/bash
-# sync.sh — двостороння синхронізація між ~/.claude/ і git-репо
+#!/usr/bin/env bash
+# Синхронізація між ~/.claude/ та git-репо ClaudeCodeTools-behavior.
 #
-# sync.sh         — копіює ~/.claude/ → репо (зберегти зміни)
-# sync.sh --pull  — копіює репо → ~/.claude/ (застосувати зміни)
+# Без аргументів: push — копіює з ~/.claude/ → репо    (перед комітом).
+# --pull:        pull — копіює з репо → ~/.claude/    (після клону/оновлення).
 
-set -e
+set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE="$HOME/.claude"
-ITEMS=("CLAUDE.md" "skills" "agents")
+CLAUDE_DIR="$HOME/.claude"
 
-pull() {
-    for item in "${ITEMS[@]}"; do
-        if [ -e "$REPO_DIR/.claude/$item" ]; then
-            rm -rf "$SOURCE/$item" 2>/dev/null || true
-            cp -R "$REPO_DIR/.claude/$item" "$SOURCE/$item"
-            echo "✓ $item → ~/.claude/"
-        else
-            echo "✗ .claude/$item не знайдено в репо"
-        fi
+FILES=(
+    CLAUDE.md
+    statusline.py
+)
+
+DIRS=(
+    agents
+    skills
+)
+
+die() { echo "[sync] ПОМИЛКА: $1" >&2; exit 1; }
+
+push_changes() {
+    echo "[sync] push: ~/.claude/ → $REPO_DIR"
+    for f in "${FILES[@]}"; do
+        [ -f "$CLAUDE_DIR/$f" ] && cp "$CLAUDE_DIR/$f" "$REPO_DIR/$f" && echo "  ✓ $f"
     done
-    echo "Готово: репо → ~/.claude/"
+    for d in "${DIRS[@]}"; do
+        [ -d "$CLAUDE_DIR/$d" ] && rm -rf "$REPO_DIR/$d" && cp -r "$CLAUDE_DIR/$d" "$REPO_DIR/$d" && echo "  ✓ $d/"
+    done
+    echo "[sync] готово. Тепер: cd $REPO_DIR && git diff"
 }
 
-push() {
-    for item in "${ITEMS[@]}"; do
-        if [ -e "$SOURCE/$item" ]; then
-            rm -rf "$REPO_DIR/.claude/$item" 2>/dev/null || true
-            cp -R "$SOURCE/$item" "$REPO_DIR/.claude/$item"
-            echo "✓ $item → репо"
-        else
-            echo "✗ $item не знайдено в ~/.claude/"
-        fi
+pull_changes() {
+    echo "[sync] pull: $REPO_DIR → ~/.claude/"
+    [ -d "$CLAUDE_DIR" ] || mkdir -p "$CLAUDE_DIR"
+    for f in "${FILES[@]}"; do
+        [ -f "$REPO_DIR/$f" ] && cp "$REPO_DIR/$f" "$CLAUDE_DIR/$f" && echo "  ✓ $f"
     done
-    echo "Готово: ~/.claude/ → репо"
+    [ -f "$REPO_DIR/statusline.py" ] && chmod +x "$CLAUDE_DIR/statusline.py"
+    for d in "${DIRS[@]}"; do
+        [ -d "$REPO_DIR/$d" ] && rm -rf "$CLAUDE_DIR/$d" && cp -r "$REPO_DIR/$d" "$CLAUDE_DIR/$d" && echo "  ✓ $d/"
+    done
+    echo "[sync] готово. Файли в ~/.claude/ оновлено."
 }
 
 case "${1:-}" in
-    --pull) pull ;;
-    --push) push ;;
-    *)      push ;;
+    --pull) pull_changes ;;
+    "")     push_changes ;;
+    *)      die "невідомий аргумент: $1. Використовуй: --pull або без аргументів для push." ;;
 esac
