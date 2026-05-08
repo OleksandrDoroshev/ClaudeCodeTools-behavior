@@ -241,8 +241,8 @@ Base: <base-коміт> | HEAD: <head-коміт>
 ### Як виконати (покроково)
 
 1. **Визнач що змінилося:**
-   - `git diff <base-branch>...HEAD --stat` (base-branch: main, master, production)
-   - `git log <base-branch>..HEAD --oneline`
+   - `git diff <base-branch>...HEAD --stat` — три крапки дають **сумарний diff УСІХ проміжних комітів** від спільного предка до HEAD, не тільки останнього
+   - `git log <base-branch>..HEAD --oneline` — список усіх комітів між base і HEAD
    - Якщо не git-репо — запитай користувача
 
 2. **Обери стратегію** (Dynamic Routing — див. вище): повний tracing або Deep Tracing по підсистемах.
